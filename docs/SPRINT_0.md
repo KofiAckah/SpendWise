@@ -21,7 +21,6 @@ This backlog outlines the features to be developed across Sprint 1 and Sprint 2.
 | **US03** | High | **View Total Spending**<br>As a user, I want to see the total sum of all my expenses so that I know my total spending. | 1. Distinct "Total" display area on screen.<br>2. Total updates automatically when items are added.<br>3. Calculation is mathematically accurate. | 1 |
 | **US04** | Medium | **Delete Expense**<br>As a user, I want to remove an item from the list so that I can fix mistakes or remove duplicates. | 1. Visible "Delete" button for each list item.<br>2. Clicking removes the record from the database.<br>3. Total spending updates immediately. | 2 |
 | **US05** | Medium | **Filter by Category**<br>As a user, I want to filter my expenses by category (e.g., Food, Transport) to analyze my habits. | 1. Dropdown in "Log Expense" to select category.<br>2. Filter control above the list to toggle views.<br>3. Total updates to show only filtered sum. | 5 |
-| **US06** | Low | **Update Entry**<br>As a user, I want to edit an existing expense entry to correct details. | 1. "Edit" button opens a form with existing data.<br>2. Saving updates the record in PostgreSQL. | 3 |
 
 ---
 
