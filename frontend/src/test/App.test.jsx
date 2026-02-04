@@ -181,7 +181,12 @@ describe('User Story 1: Log Expense - Frontend UI', () => {
       const submitButton = screen.getByRole('button', { name: /add expense/i });
 
       await user.type(itemNameInput, 'Invalid expense');
-      await user.type(amountInput, '-5.00');
+      
+      // Remove min attribute temporarily to allow negative input
+      amountInput.removeAttribute('min');
+      await user.clear(amountInput);
+      await user.type(amountInput, '-5');
+      
       await user.click(submitButton);
 
       // Check for validation error
