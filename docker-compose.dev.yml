@@ -1,0 +1,78 @@
+# Development docker-compose file
+# Use this for local development with hot-reloading
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: spendwise-db-dev
+    environment:
+      POSTGRES_DB: spendwise
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spendwise-network
+
+  # Backend API (Dev mode with nodemon)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: spendwise-backend-dev
+    environment:
+      PORT: 5000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: spendwise
+      DB_USER: postgres
+      DB_PASSWORD: postgres123
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - spendwise-network
+    restart: unless-stopped
+
+  # Frontend Application (Dev mode with Vite HMR)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: spendwise-frontend-dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - spendwise-network
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=http://localhost:5000
+
+volumes:
+  postgres_data_dev:
+    driver: local
+
+networks:
+  spendwise-network:
+    driver: bridge
