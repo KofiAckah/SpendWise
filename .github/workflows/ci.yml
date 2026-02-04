@@ -158,18 +158,18 @@ jobs:
           EOF
 
       - name: Start Docker Compose services
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for services to start..."
           sleep 30
-          docker-compose ps
-          docker-compose logs backend
+          docker compose ps
+          docker compose logs backend
 
       - name: Test backend health endpoint
         run: |
-          curl --retry 10 --retry-delay 5 --retry-connrefused http://localhost:5000/api/health || (docker-compose logs backend && exit 1)
+          curl --retry 10 --retry-delay 5 --retry-connrefused http://localhost:5000/api/health || (docker compose logs backend && exit 1)
 
       - name: Test expense creation endpoint
         run: |
@@ -181,14 +181,14 @@ jobs:
           http_code=$(echo "$response" | tail -n1)
           if [ "$http_code" != "201" ]; then
             echo "❌ Expected 201, got $http_code"
-            docker-compose logs backend
+            docker compose logs backend
             exit 1
           fi
           echo "✅ Expense creation endpoint working"
 
       - name: Stop Docker Compose services
         if: always()
-        run: docker-compose down -v
+        run: docker compose down -v
 
       - name: Display integration test summary
         run: echo "✅ Integration tests passed for User Story 1"
