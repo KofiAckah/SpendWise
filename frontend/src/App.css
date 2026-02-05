@@ -245,6 +245,32 @@ body {
   margin-left: 1rem;
 }
 
+/* Total Spending Styles */
+.total-spending {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-lg);
+}
+
+.total-label {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.total-amount {
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+}
+
 /* Responsive design */
 @media (max-width: 640px) {
   .app-header h1 {
@@ -265,5 +291,15 @@ body {
   .expense-amount {
     margin-left: 0;
     align-self: flex-end;
+  }
+
+  .total-spending {
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+  }
+
+  .total-amount {
+    font-size: 1.75rem;
   }
 }

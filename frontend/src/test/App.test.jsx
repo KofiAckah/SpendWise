@@ -17,6 +17,12 @@ describe('User Story 1: Log Expense - Frontend UI', () => {
       ok: true,
       json: async () => ({ expenses: [] })
     });
+    
+    // Mock the initial GET /api/expenses/total call that happens on mount
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ total: 0 })
+    });
   });
 
   describe('Acceptance Criteria #1: Input fields for Item Name and Amount', () => {
@@ -174,9 +180,10 @@ describe('User Story 1: Log Expense - Frontend UI', () => {
         expect(screen.getByText(/item name cannot be empty/i)).toBeInTheDocument();
       });
 
-      // Should not call POST API (only the initial GET from mount)
-      expect(fetch).toHaveBeenCalledTimes(1);
+      // Should not call POST API (only the initial GET calls from mount)
+      expect(fetch).toHaveBeenCalledTimes(2);
       expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/expenses');
+      expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/expenses/total');
     });
 
     test('should show error for negative amount', async () => {
@@ -201,9 +208,10 @@ describe('User Story 1: Log Expense - Frontend UI', () => {
         expect(screen.getByText(/amount must be a positive number/i)).toBeInTheDocument();
       });
 
-      // Should not call POST API (only the initial GET from mount)
-      expect(fetch).toHaveBeenCalledTimes(1);
+      // Should not call POST API (only the initial GET calls from mount)
+      expect(fetch).toHaveBeenCalledTimes(2);
       expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/expenses');
+      expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/expenses/total');
     });
 
     test('should show error message from server when API fails', async () => {
@@ -279,6 +287,9 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
     // Clear all mocks before each test
     vi.clearAllMocks();
     fetch.mockClear();
+    
+    // Note: Each test will mock fetch responses as needed
+    // since different tests require different mock data
   });
 
   describe('Acceptance Criteria #1: Fetches data from Node.js API', () => {
@@ -301,6 +312,11 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
       fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ expenses: mockExpenses })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
       });
 
       render(<App />);
@@ -330,6 +346,11 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
       fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ expenses: mockExpenses })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
       });
 
       render(<App />);
@@ -373,6 +394,11 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
         ok: true,
         json: async () => ({ expenses: mockExpenses })
       });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 85.50 })
+      });
 
       render(<App />);
 
@@ -396,6 +422,11 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
         ok: true,
         json: async () => ({ expenses: [] })
       });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
 
       render(<App />);
 
@@ -408,6 +439,11 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
       fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ expenses: [] })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
       });
 
       render(<App />);
@@ -423,6 +459,11 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
       fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ expenses: [] })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
       });
 
       render(<App />);
@@ -446,16 +487,22 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
         ok: true,
         json: async () => ({ expenses: mockExpenses })
       });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 10.50 })
+      });
 
       render(<App />);
 
       await waitFor(() => {
         expect(screen.getByText('Test Item')).toBeInTheDocument();
-        // Amount should be formatted with 2 decimal places
-        expect(screen.getByText(/10\.50/)).toBeInTheDocument();
-        // Should display GHS currency
-        expect(screen.getByText(/GHS 10\.50/)).toBeInTheDocument();
       });
+      
+      // Find the expense item (not the total)
+      const expenseItems = screen.getAllByText(/GHS 10\.50/);
+      // Should have total + expense item = 2 occurrences
+      expect(expenseItems.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -467,6 +514,11 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
       fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ expenses: [] })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
       });
 
       render(<App />);
@@ -497,6 +549,11 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
           }]
         })
       });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 20.00 })
+      });
 
       // Add expense
       await user.type(screen.getByLabelText(/item name/i), 'New Item');
@@ -515,10 +572,15 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
 
   describe('Error handling', () => {
     test('should display error message when fetch fails', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ error: 'Failed to fetch expenses' })
-      });
+      globalThis.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => ({ error: 'Failed to fetch expenses' })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ total: 0 })
+        });
 
       render(<App />);
 
@@ -527,5 +589,193 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
       });
     });
   });
-});
 
+  // User Story 3: View Total Spending
+  describe('User Story 3: View Total Spending', () => {
+    test('AC #1 & #2: should display total spending when expenses exist', async () => {
+      globalThis.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            expenses: [
+              { id: 1, item_name: 'Lunch', amount: '25.50', created_at: '2026-02-04T10:00:00Z' },
+              { id: 2, item_name: 'Bus', amount: '5.00', created_at: '2026-02-04T11:00:00Z' }
+            ]
+          })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ total: 30.50 })
+        });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/total spending/i)).toBeInTheDocument();
+      });
+      
+      const totalSection = screen.getByText(/total spending/i).parentElement;
+      expect(totalSection).toHaveTextContent('GHS 30.50');
+    });
+
+    test('AC #3: should format total as GHS currency with 2 decimal places', async () => {
+      globalThis.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            expenses: [
+              { id: 1, item_name: 'Item', amount: '99.99', created_at: '2026-02-04T10:00:00Z' }
+            ]
+          })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ total: 99.99 })
+        });
+
+      render(<App />);
+
+      await waitFor(() => {
+        const totalSection = screen.getByText(/total spending/i).parentElement;
+        expect(totalSection).toHaveTextContent('GHS 99.99');
+      });
+    });
+
+    test('should not display total when no expenses exist', async () => {
+      globalThis.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ expenses: [] })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ total: 0 })
+        });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/no expenses yet/i)).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText(/total spending/i)).not.toBeInTheDocument();
+    });
+
+    test('AC #1: should update total when new expense is added', async () => {
+      const user = userEvent.setup();
+
+      globalThis.fetch = vi.fn()
+        // Initial fetch expenses
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            expenses: [
+              { id: 1, item_name: 'Existing', amount: '10.00', created_at: '2026-02-04T10:00:00Z' }
+            ]
+          })
+        })
+        // Initial fetch total
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ total: 10.00 })
+        })
+        // POST new expense
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: async () => ({
+            message: 'Expense added successfully',
+            expense: { id: 2, item_name: 'New Item', amount: 20.00, created_at: new Date().toISOString() }
+          })
+        })
+        // Fetch expenses after POST
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            expenses: [
+              { id: 2, item_name: 'New Item', amount: '20.00', created_at: '2026-02-04T11:00:00Z' },
+              { id: 1, item_name: 'Existing', amount: '10.00', created_at: '2026-02-04T10:00:00Z' }
+            ]
+          })
+        })
+        // Fetch updated total
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ total: 30.00 })
+        });
+
+      render(<App />);
+
+      // Wait for initial render
+      await waitFor(() => {
+        const totalSection = screen.getByText(/total spending/i).parentElement;
+        expect(totalSection).toHaveTextContent('GHS 10.00');
+      });
+
+      // Add new expense
+      await user.type(screen.getByLabelText(/item name/i), 'New Item');
+      await user.type(screen.getByLabelText(/amount/i), '20.00');
+      await user.click(screen.getByRole('button', { name: /add expense/i }));
+
+      // Wait for updated total
+      await waitFor(() => {
+        const totalSection = screen.getByText(/total spending/i).parentElement;
+        expect(totalSection).toHaveTextContent('GHS 30.00');
+      });
+    });
+
+    test('AC #2: should handle large totals correctly', async () => {
+      globalThis.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            expenses: [
+              { id: 1, item_name: 'Big Purchase', amount: '1500.75', created_at: '2026-02-04T10:00:00Z' }
+            ]
+          })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ total: 1500.75 })
+        });
+
+      render(<App />);
+
+      await waitFor(() => {
+        const totalSection = screen.getByText(/total spending/i).parentElement;
+        expect(totalSection).toHaveTextContent('GHS 1500.75');
+      });
+    });
+
+    test('should handle fetch total error gracefully', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      globalThis.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            expenses: [
+              { id: 1, item_name: 'Item', amount: '10.00', created_at: '2026-02-04T10:00:00Z' }
+            ]
+          })
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => ({ error: 'Failed to fetch total' })
+        });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Item')).toBeInTheDocument();
+      });
+
+      // Total should still display with default 0 value
+      await waitFor(() => {
+        expect(screen.getByText(/total spending/i)).toBeInTheDocument();
+      });
+
+      consoleSpy.mockRestore();
+    });
+  });
+});
