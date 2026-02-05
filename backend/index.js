@@ -118,7 +118,52 @@ app.get('/api/expenses/total', async (req, res) => {
   }
 });
 
+// DELETE /api/expenses/:id - Delete an expense
+app.delete('/api/expenses/:id', async (req, res) => {
+  const { id } = req.params;
+
+  // Validation
+  const expenseId = parseInt(id);
+  if (isNaN(expenseId) || expenseId <= 0) {
+    return res.status(400).json({ 
+      error: 'Invalid expense ID' 
+    });
+  }
+
+  try {
+    // Check if expense exists
+    const checkResult = await pool.query(
+      'SELECT * FROM expenses WHERE id = $1',
+      [expenseId]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Expense not found' 
+      });
+    }
+
+    // Delete the expense
+    await pool.query(
+      'DELETE FROM expenses WHERE id = $1',
+      [expenseId]
+    );
+
+    res.status(200).json({
+      message: 'Expense deleted successfully',
+      id: expenseId
+    });
+  } catch (error) {
+    console.error('Error deleting expense:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete expense from database' 
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
+
+export { app, pool };
