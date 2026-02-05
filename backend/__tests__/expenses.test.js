@@ -366,4 +366,100 @@ describe('User Story 2: View Expense List - GET /api/expenses', () => {
       expect(response.body.error).toBe('Failed to fetch expenses from database');
     });
   });
+
+  // User Story 3: View Total Spending - GET /api/expenses/total
+  describe('GET /api/expenses/total', () => {
+    let app;
+
+    beforeEach(() => {
+      // Setup Express app for testing
+      app = express();
+      app.use(cors());
+      app.use(express.json());
+
+      // Define the GET total endpoint
+      app.get('/api/expenses/total', async (req, res) => {
+        try {
+          const result = await mockPool.query(
+            'SELECT COALESCE(SUM(amount), 0) as total FROM expenses'
+          );
+
+          const total = parseFloat(result.rows[0].total);
+
+          res.status(200).json({
+            total: total
+          });
+        } catch (error) {
+          console.error('Error calculating total spending:', error);
+          res.status(500).json({ 
+            error: 'Failed to calculate total spending' 
+          });
+        }
+      });
+
+      jest.clearAllMocks();
+    });
+
+    // AC #2: Backend calculates sum accurately
+    test('should calculate total spending correctly', async () => {
+      mockPool.query.mockResolvedValue({
+        rows: [{ total: '125.75' }]
+      });
+
+      const response = await request(app).get('/api/expenses/total');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('total');
+      expect(response.body.total).toBe(125.75);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT COALESCE(SUM(amount), 0) as total FROM expenses'
+      );
+    });
+
+    // AC #2: Backend handles zero expenses
+    test('should return 0 when no expenses exist', async () => {
+      mockPool.query.mockResolvedValue({
+        rows: [{ total: '0' }]
+      });
+
+      const response = await request(app).get('/api/expenses/total');
+
+      expect(response.status).toBe(200);
+      expect(response.body.total).toBe(0);
+    });
+
+    // AC #2: Backend handles multiple expenses
+    test('should sum multiple expenses correctly', async () => {
+      mockPool.query.mockResolvedValue({
+        rows: [{ total: '500.50' }]
+      });
+
+      const response = await request(app).get('/api/expenses/total');
+
+      expect(response.status).toBe(200);
+      expect(response.body.total).toBe(500.50);
+    });
+
+    // Error handling
+    test('should handle database errors gracefully', async () => {
+      mockPool.query.mockRejectedValue(new Error('Database connection failed'));
+
+      const response = await request(app).get('/api/expenses/total');
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('Failed to calculate total spending');
+    });
+
+    // AC #2: Backend handles decimal precision
+    test('should handle decimal precision correctly', async () => {
+      mockPool.query.mockResolvedValue({
+        rows: [{ total: '99.99' }]
+      });
+
+      const response = await request(app).get('/api/expenses/total');
+
+      expect(response.status).toBe(200);
+      expect(response.body.total).toBe(99.99);
+    });
+  });
 });
