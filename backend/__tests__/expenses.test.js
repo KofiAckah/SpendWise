@@ -463,3 +463,155 @@ describe('User Story 2: View Expense List - GET /api/expenses', () => {
     });
   });
 });
+
+describe('User Story 4: Delete Expense - DELETE /api/expenses/:id', () => {
+  let app;
+
+  beforeEach(() => {
+    // Setup Express app for testing
+    app = express();
+    app.use(cors());
+    app.use(express.json());
+
+    // Define the DELETE endpoint (same logic as in index.js)
+    app.delete('/api/expenses/:id', async (req, res) => {
+      const { id } = req.params;
+
+      // Validation
+      const expenseId = parseInt(id);
+      if (isNaN(expenseId) || expenseId <= 0) {
+        return res.status(400).json({ 
+          error: 'Invalid expense ID' 
+        });
+      }
+
+      try {
+        // Check if expense exists
+        const checkResult = await mockPool.query(
+          'SELECT * FROM expenses WHERE id = $1',
+          [expenseId]
+        );
+
+        if (checkResult.rows.length === 0) {
+          return res.status(404).json({ 
+            error: 'Expense not found' 
+          });
+        }
+
+        // Delete the expense
+        await mockPool.query(
+          'DELETE FROM expenses WHERE id = $1',
+          [expenseId]
+        );
+
+        res.status(200).json({
+          message: 'Expense deleted successfully',
+          id: expenseId
+        });
+      } catch (error) {
+        res.status(500).json({ 
+          error: 'Failed to delete expense from database' 
+        });
+      }
+    });
+
+    // Clear all mocks before each test
+    jest.clearAllMocks();
+  });
+
+  describe('Acceptance Criteria #1 & #2: Delete button removes expense from database', () => {
+    test('should delete expense with valid ID', async () => {
+      // Arrange: Mock expense exists
+      mockPool.query
+        .mockResolvedValueOnce({
+          rows: [{ id: 1, item_name: 'Lunch', amount: '25.50' }]
+        })
+        .mockResolvedValueOnce({ rows: [] }); // Delete query
+
+      // Act: Send delete request
+      const response = await request(app)
+        .delete('/api/expenses/1');
+
+      // Assert: Check response
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe('Expense deleted successfully');
+      expect(response.body.id).toBe(1);
+      
+      // Verify database was called correctly
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT * FROM expenses WHERE id = $1',
+        [1]
+      );
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'DELETE FROM expenses WHERE id = $1',
+        [1]
+      );
+    });
+
+    test('should return 404 if expense does not exist', async () => {
+      // Arrange: Mock expense not found
+      mockPool.query.mockResolvedValue({
+        rows: []
+      });
+
+      // Act: Send delete request
+      const response = await request(app)
+        .delete('/api/expenses/999');
+
+      // Assert
+      expect(response.status).toBe(404);
+      expect(response.body.error).toBe('Expense not found');
+      
+      // Verify only SELECT was called, not DELETE
+      expect(mockPool.query).toHaveBeenCalledTimes(1);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT * FROM expenses WHERE id = $1',
+        [999]
+      );
+    });
+  });
+
+  describe('Validation: Invalid expense ID', () => {
+    test('should reject non-numeric ID', async () => {
+      const response = await request(app)
+        .delete('/api/expenses/abc');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Invalid expense ID');
+      expect(mockPool.query).not.toHaveBeenCalled();
+    });
+
+    test('should reject negative ID', async () => {
+      const response = await request(app)
+        .delete('/api/expenses/-1');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Invalid expense ID');
+      expect(mockPool.query).not.toHaveBeenCalled();
+    });
+
+    test('should reject zero ID', async () => {
+      const response = await request(app)
+        .delete('/api/expenses/0');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Invalid expense ID');
+      expect(mockPool.query).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Error handling', () => {
+    test('should handle database errors gracefully', async () => {
+      // Arrange: Mock database error on SELECT
+      mockPool.query.mockRejectedValue(new Error('Database connection failed'));
+
+      // Act: Send delete request
+      const response = await request(app)
+        .delete('/api/expenses/1');
+
+      // Assert
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('Failed to delete expense from database');
+    });
+  });
+});

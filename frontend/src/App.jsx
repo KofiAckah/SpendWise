@@ -117,6 +117,35 @@ function App() {
     return parseFloat(amount).toFixed(2)
   }
 
+  const handleDelete = async (id) => {
+    // Confirm before deleting
+    if (!window.confirm('Are you sure you want to delete this expense?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/expenses/${id}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete expense')
+      }
+
+      // Refresh expense list and total after deletion
+      fetchExpenses()
+      fetchTotal()
+      
+      setSuccess('✓ Expense deleted successfully!')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err) {
+      setError(err.message || 'Failed to delete expense')
+      setTimeout(() => setError(''), 3000)
+    }
+  }
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -195,8 +224,17 @@ function App() {
                       <span className="expense-name">{expense.item_name}</span>
                       <span className="expense-date">{formatDate(expense.created_at)}</span>
                     </div>
-                    <div className="expense-amount">
-                      GHS {formatAmount(expense.amount)}
+                    <div className="expense-actions">
+                      <span className="expense-amount">
+                        GHS {formatAmount(expense.amount)}
+                      </span>
+                      <button 
+                        className="btn-delete"
+                        onClick={() => handleDelete(expense.id)}
+                        aria-label={`Delete ${expense.item_name}`}
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </div>
                 ))}
