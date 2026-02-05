@@ -242,3 +242,128 @@ describe('User Story 1: Log Expense - POST /api/expenses', () => {
     });
   });
 });
+
+describe('User Story 2: View Expense List - GET /api/expenses', () => {
+  let app;
+
+  beforeEach(() => {
+    // Setup Express app for testing
+    app = express();
+    app.use(cors());
+    app.use(express.json());
+
+    // Define the GET endpoint
+    app.get('/api/expenses', async (req, res) => {
+      try {
+        const result = await mockPool.query(
+          'SELECT * FROM expenses ORDER BY created_at DESC'
+        );
+
+        res.status(200).json({
+          expenses: result.rows
+        });
+      } catch (error) {
+        res.status(500).json({ 
+          error: 'Failed to fetch expenses from database' 
+        });
+      }
+    });
+
+    // Clear all mocks
+    jest.clearAllMocks();
+  });
+
+  describe('Acceptance Criteria #1: Fetches data from Node.js API', () => {
+    test('should fetch all expenses from database', async () => {
+      const mockExpenses = [
+        { 
+          id: 1, 
+          item_name: 'Lunch', 
+          amount: '25.50', 
+          created_at: '2026-02-05T10:00:00Z' 
+        },
+        { 
+          id: 2, 
+          item_name: 'Coffee', 
+          amount: '5.00', 
+          created_at: '2026-02-05T09:00:00Z' 
+        }
+      ];
+
+      mockPool.query.mockResolvedValue({ rows: mockExpenses });
+
+      const response = await request(app).get('/api/expenses');
+
+      expect(response.status).toBe(200);
+      expect(response.body.expenses).toEqual(mockExpenses);
+      expect(response.body.expenses).toHaveLength(2);
+    });
+
+    test('should call database with correct SQL query', async () => {
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      await request(app).get('/api/expenses');
+
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT * FROM expenses ORDER BY created_at DESC'
+      );
+    });
+  });
+
+  describe('Acceptance Criteria #2: Displays list in chronological order', () => {
+    test('should return expenses ordered by created_at DESC (newest first)', async () => {
+      const mockExpenses = [
+        { 
+          id: 3, 
+          item_name: 'Dinner', 
+          amount: '45.00', 
+          created_at: '2026-02-05T18:00:00Z' 
+        },
+        { 
+          id: 2, 
+          item_name: 'Lunch', 
+          amount: '25.50', 
+          created_at: '2026-02-05T12:00:00Z' 
+        },
+        { 
+          id: 1, 
+          item_name: 'Breakfast', 
+          amount: '15.00', 
+          created_at: '2026-02-05T08:00:00Z' 
+        }
+      ];
+
+      mockPool.query.mockResolvedValue({ rows: mockExpenses });
+
+      const response = await request(app).get('/api/expenses');
+
+      expect(response.status).toBe(200);
+      expect(response.body.expenses[0].item_name).toBe('Dinner');
+      expect(response.body.expenses[1].item_name).toBe('Lunch');
+      expect(response.body.expenses[2].item_name).toBe('Breakfast');
+    });
+  });
+
+  describe('Acceptance Criteria #3: Shows empty state', () => {
+    test('should return empty array when no expenses exist', async () => {
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      const response = await request(app).get('/api/expenses');
+
+      expect(response.status).toBe(200);
+      expect(response.body.expenses).toEqual([]);
+      expect(response.body.expenses).toHaveLength(0);
+    });
+  });
+
+  describe('Error handling', () => {
+    test('should handle database errors gracefully', async () => {
+      mockPool.query.mockRejectedValue(new Error('Database connection failed'));
+
+      const response = await request(app).get('/api/expenses');
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('Failed to fetch expenses from database');
+    });
+  });
+});

@@ -16,8 +16,8 @@ For this execution phase, we have selected the "Happy Path" stories to ensure da
 
 | ID | Priority | User Story | Acceptance Criteria (AC) | Est. (Pts) | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **US01** | High | **Log Expense**<br>As a user, I want to enter the name and cost of an item I bought so that I can keep a record of my spending. | 1. Validation for empty names/negative costs.<br>2. Data persists in Postgres.<br>3. UI reflects new item instantly. | 3 | [To-Do] |
-| **US02** | High | **View Expense List**<br>As a user, I want to see a list of all items I have added so that I can review my spending history. | 1. Fetches data from Node.js API.<br>2. Displays list in chronological order.<br>3. Shows "No expenses" if empty. | 2 | [To-Do] |
+| **US01** | High | **Log Expense**<br>As a user, I want to enter the name and cost of an item I bought so that I can keep a record of my spending. | 1. Validation for empty names/negative costs.<br>2. Data persists in Postgres.<br>3. UI reflects new item instantly. | 3 | [Done] |
+| **US02** | High | **View Expense List**<br>As a user, I want to see a list of all items I have added so that I can review my spending history. | 1. Fetches data from Node.js API.<br>2. Displays list in chronological order.<br>3. Shows "No expenses" if empty. | 2 | [Done] |
 | **US03** | High | **View Total Spending**<br>As a user, I want to see the total sum of all my expenses so that I know my total spending. | 1. Total updates when items are added.<br>2. Backend calculates sum accurately.<br>3. Formatted as GHS currency. | 1 | [To-Do] |
 
 ---

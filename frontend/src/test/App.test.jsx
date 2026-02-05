@@ -4,13 +4,19 @@ import userEvent from '@testing-library/user-event';
 import App from '../App';
 
 // Mock fetch globally
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn();
 
 describe('User Story 1: Log Expense - Frontend UI', () => {
   beforeEach(() => {
     // Clear all mocks before each test
     vi.clearAllMocks();
     fetch.mockClear();
+
+    // Mock the initial GET /api/expenses call that happens on mount
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ expenses: [] })
+    });
   });
 
   describe('Acceptance Criteria #1: Input fields for Item Name and Amount', () => {
@@ -168,8 +174,9 @@ describe('User Story 1: Log Expense - Frontend UI', () => {
         expect(screen.getByText(/item name cannot be empty/i)).toBeInTheDocument();
       });
 
-      // Should not call API
-      expect(fetch).not.toHaveBeenCalled();
+      // Should not call POST API (only the initial GET from mount)
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/expenses');
     });
 
     test('should show error for negative amount', async () => {
@@ -194,8 +201,9 @@ describe('User Story 1: Log Expense - Frontend UI', () => {
         expect(screen.getByText(/amount must be a positive number/i)).toBeInTheDocument();
       });
 
-      // Should not call API
-      expect(fetch).not.toHaveBeenCalled();
+      // Should not call POST API (only the initial GET from mount)
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/expenses');
     });
 
     test('should show error message from server when API fails', async () => {
@@ -265,3 +273,259 @@ describe('User Story 1: Log Expense - Frontend UI', () => {
     });
   });
 });
+
+describe('User Story 2: View Expense List - Frontend UI', () => {
+  beforeEach(() => {
+    // Clear all mocks before each test
+    vi.clearAllMocks();
+    fetch.mockClear();
+  });
+
+  describe('Acceptance Criteria #1: Fetches data from Node.js API', () => {
+    test('should fetch expenses on component mount', async () => {
+      const mockExpenses = [
+        {
+          id: 1,
+          item_name: 'Lunch',
+          amount: '25.50',
+          created_at: '2026-02-05T12:00:00Z'
+        },
+        {
+          id: 2,
+          item_name: 'Coffee',
+          amount: '5.00',
+          created_at: '2026-02-05T09:00:00Z'
+        }
+      ];
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: mockExpenses })
+      });
+
+      render(<App />);
+
+      // Verify fetch was called
+      await waitFor(() => {
+        expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/expenses');
+      });
+    });
+
+    test('should display fetched expenses', async () => {
+      const mockExpenses = [
+        {
+          id: 1,
+          item_name: 'Lunch',
+          amount: '25.50',
+          created_at: '2026-02-05T12:00:00Z'
+        },
+        {
+          id: 2,
+          item_name: 'Coffee',
+          amount: '5.00',
+          created_at: '2026-02-05T09:00:00Z'
+        }
+      ];
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: mockExpenses })
+      });
+
+      render(<App />);
+
+      // Wait for expenses to be displayed
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+        expect(screen.getByText('Coffee')).toBeInTheDocument();
+      });
+
+      // Verify amounts are displayed
+      expect(screen.getByText(/25\.50/)).toBeInTheDocument();
+      expect(screen.getByText(/5\.00/)).toBeInTheDocument();
+    });
+  });
+
+  describe('Acceptance Criteria #2: Displays list in chronological order', () => {
+    test('should display expenses in order by created_at DESC', async () => {
+      const mockExpenses = [
+        {
+          id: 3,
+          item_name: 'Dinner',
+          amount: '45.00',
+          created_at: '2026-02-05T18:00:00Z'
+        },
+        {
+          id: 2,
+          item_name: 'Lunch',
+          amount: '25.50',
+          created_at: '2026-02-05T12:00:00Z'
+        },
+        {
+          id: 1,
+          item_name: 'Breakfast',
+          amount: '15.00',
+          created_at: '2026-02-05T08:00:00Z'
+        }
+      ];
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: mockExpenses })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Dinner')).toBeInTheDocument();
+      });
+
+      // Get all expense items
+      const expenseItems = screen.getAllByText(/Dinner|Lunch|Breakfast/);
+      
+      // Verify order (newest first)
+      expect(expenseItems[0]).toHaveTextContent('Dinner');
+      expect(expenseItems[1]).toHaveTextContent('Lunch');
+      expect(expenseItems[2]).toHaveTextContent('Breakfast');
+    });
+  });
+
+  describe('Acceptance Criteria #3: Shows "No expenses" if empty', () => {
+    test('should display empty state message when no expenses', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/no expenses yet/i)).toBeInTheDocument();
+      });
+    });
+
+    test('should display helpful message in empty state', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/start tracking your spending/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('UI/UX Requirements', () => {
+    test('should display Expense History heading', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /expense history/i })).toBeInTheDocument();
+      });
+    });
+
+    test('should display expense with proper formatting', async () => {
+      const mockExpenses = [
+        {
+          id: 1,
+          item_name: 'Test Item',
+          amount: '10.5',
+          created_at: '2026-02-05T12:00:00Z'
+        }
+      ];
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: mockExpenses })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Item')).toBeInTheDocument();
+        // Amount should be formatted with 2 decimal places
+        expect(screen.getByText(/10\.50/)).toBeInTheDocument();
+        // Should display GHS currency
+        expect(screen.getByText(/GHS 10\.50/)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Integration with Add Expense', () => {
+    test('should refresh expense list after adding new expense', async () => {
+      const user = userEvent.setup();
+
+      // Mock initial empty fetch
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      render(<App />);
+
+      // Wait for initial fetch
+      await waitFor(() => {
+        expect(screen.getByText(/no expenses yet/i)).toBeInTheDocument();
+      });
+
+      // Mock POST response
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: 'Expense added successfully',
+          expense: { id: 1, item_name: 'New Item', amount: '20.00' }
+        })
+      });
+
+      // Mock GET response after adding
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [{
+            id: 1,
+            item_name: 'New Item',
+            amount: '20.00',
+            created_at: '2026-02-05T12:00:00Z'
+          }]
+        })
+      });
+
+      // Add expense
+      await user.type(screen.getByLabelText(/item name/i), 'New Item');
+      await user.type(screen.getByLabelText(/amount/i), '20.00');
+      await user.click(screen.getByRole('button', { name: /add expense/i }));
+
+      // Verify list is refreshed
+      await waitFor(() => {
+        expect(screen.getByText('New Item')).toBeInTheDocument();
+      });
+
+      // Empty state should no longer be visible
+      expect(screen.queryByText(/no expenses yet/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Error handling', () => {
+    test('should display error message when fetch fails', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'Failed to fetch expenses' })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/failed to fetch expenses/i)).toBeInTheDocument();
+      });
+    });
+  });
+});
+
