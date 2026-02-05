@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import App from '../App';
 
 // Mock fetch globally
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn();
 
 describe('User Story 1: Log Expense - Frontend UI', () => {
   beforeEach(() => {
