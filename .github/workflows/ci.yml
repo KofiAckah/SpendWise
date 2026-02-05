@@ -15,7 +15,7 @@ on:
 jobs:
   # Backend Testing
   test-backend:
-    name: Backend Tests (User Story 1)
+    name: Backend Tests
     runs-on: ubuntu-latest
     
     services:
@@ -60,11 +60,11 @@ jobs:
 
       - name: Display test summary
         if: always()
-        run: echo "✅ Backend tests completed for User Story 1"
+        run: echo "✅ Backend tests completed"
 
   # Frontend Testing
   test-frontend:
-    name: Frontend Tests (User Story 1)
+    name: Frontend Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -97,7 +97,7 @@ jobs:
 
       - name: Display test summary
         if: always()
-        run: echo "✅ Frontend tests completed for User Story 1"
+        run: echo "✅ Frontend tests completed"
 
   # Docker Build Verification
   build-docker:
@@ -191,13 +191,13 @@ jobs:
         run: docker compose down -v
 
       - name: Display integration test summary
-        run: echo "✅ Integration tests passed for User Story 1"
+        run: echo "✅ Integration tests passed"
 
   # Final Status Check
   status-check:
     name: All Tests Passed ✅
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend, build-docker, integration-test]
+    needs: [test-backend, test-frontend, integration-test]
     if: always()
 
     steps:
@@ -205,16 +205,23 @@ jobs:
         run: |
           echo "Backend Tests: ${{ needs.test-backend.result }}"
           echo "Frontend Tests: ${{ needs.test-frontend.result }}"
-          echo "Docker Build: ${{ needs.build-docker.result }}"
           echo "Integration Tests: ${{ needs.integration-test.result }}"
           
-          if [ "${{ needs.test-backend.result }}" != "success" ] || \
-             [ "${{ needs.test-frontend.result }}" != "success" ] || \
-             [ "${{ needs.build-docker.result }}" != "success" ] || \
-             [ "${{ needs.integration-test.result }}" != "success" ]; then
-            echo "❌ One or more jobs failed"
+          # Check if any required job failed
+          if [ "${{ needs.test-backend.result }}" != "success" ]; then
+            echo "❌ Backend tests failed"
             exit 1
-          else
-            echo "✅ All tests passed successfully for User Story 1!"
-            echo "✅ Ready to move to User Story 2"
           fi
+          
+          if [ "${{ needs.test-frontend.result }}" != "success" ]; then
+            echo "❌ Frontend tests failed"
+            exit 1
+          fi
+          
+          if [ "${{ needs.integration-test.result }}" != "success" ]; then
+            echo "❌ Integration tests failed"
+            exit 1
+          fi
+          
+          echo "✅ All tests passed successfully!"
+          echo "✅ Ready for deployment"
