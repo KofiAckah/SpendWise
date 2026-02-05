@@ -98,6 +98,26 @@ app.get('/api/expenses', async (req, res) => {
   }
 });
 
+// GET /api/expenses/total - Get total spending
+app.get('/api/expenses/total', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT COALESCE(SUM(amount), 0) as total FROM expenses'
+    );
+
+    const total = parseFloat(result.rows[0].total);
+
+    res.status(200).json({
+      total: total
+    });
+  } catch (error) {
+    console.error('Error calculating total spending:', error);
+    res.status(500).json({ 
+      error: 'Failed to calculate total spending' 
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
