@@ -56,9 +56,12 @@ body {
 .main-content {
   flex: 1;
   padding: 2rem 1rem;
-  max-width: 600px;
+  max-width: 800px;
   margin: 0 auto;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 .expense-form-container {
@@ -96,6 +99,7 @@ body {
 
 .form-group input {
   padding: 0.75rem 1rem;
+  color: var(--text-primary);
   border: 2px solid var(--border-color);
   border-radius: 8px;
   font-size: 1rem;
@@ -167,13 +171,99 @@ body {
   font-weight: 500;
 }
 
+/* Expense List Styles */
+.expense-list-container {
+  background: var(--card-bg);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+}
+
+.expense-list-container h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-secondary);
+}
+
+.empty-state p {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+.expense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.expense-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.expense-item:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow);
+  transform: translateX(4px);
+}
+
+.expense-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.expense-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.expense-date {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.expense-amount {
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: var(--primary-color);
+  white-space: nowrap;
+  margin-left: 1rem;
+}
+
 /* Responsive design */
 @media (max-width: 640px) {
   .app-header h1 {
     font-size: 2rem;
   }
   
-  .expense-form-container {
+  .expense-form-container,
+  .expense-list-container {
     padding: 1.5rem;
+  }
+
+  .expense-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .expense-amount {
+    margin-left: 0;
+    align-self: flex-end;
   }
 }

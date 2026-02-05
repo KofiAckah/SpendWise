@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 
 function App() {
@@ -7,6 +7,29 @@ function App() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
+  const [expenses, setExpenses] = useState([])
+  const [fetchError, setFetchError] = useState('')
+
+  // Fetch expenses on component mount
+  useEffect(() => {
+    fetchExpenses()
+  }, [])
+
+  const fetchExpenses = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/expenses')
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch expenses')
+      }
+
+      setExpenses(data.expenses)
+      setFetchError('')
+    } catch (err) {
+      setFetchError(err.message || 'Failed to load expenses')
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -49,6 +72,9 @@ function App() {
       setItemName('')
       setAmount('')
       
+      // Refresh expense list
+      fetchExpenses()
+      
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
@@ -56,6 +82,21 @@ function App() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const formatAmount = (amount) => {
+    return parseFloat(amount).toFixed(2)
   }
 
   return (
@@ -107,6 +148,36 @@ function App() {
               {loading ? 'Adding...' : 'Add Expense'}
             </button>
           </form>
+        </div>
+
+        <div className="expense-list-container">
+          <h2>Expense History</h2>
+          
+          {fetchError && (
+            <div className="error-message">{fetchError}</div>
+          )}
+
+          {!fetchError && expenses.length === 0 && (
+            <div className="empty-state">
+              <p>No expenses yet. Start tracking your spending!</p>
+            </div>
+          )}
+
+          {!fetchError && expenses.length > 0 && (
+            <div className="expense-list">
+              {expenses.map((expense) => (
+                <div key={expense.id} className="expense-item">
+                  <div className="expense-info">
+                    <span className="expense-name">{expense.item_name}</span>
+                    <span className="expense-date">{formatDate(expense.created_at)}</span>
+                  </div>
+                  <div className="expense-amount">
+                    GHS {formatAmount(expense.amount)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>
