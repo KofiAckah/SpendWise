@@ -39,7 +39,7 @@ app.get('/api/health', (req, res) => {
 
 // POST /api/expenses - Add new expense
 app.post('/api/expenses', async (req, res) => {
-  const { itemName, amount } = req.body;
+  const { itemName, amount, category } = req.body;
 
   // Validation
   if (!itemName || itemName.trim() === '') {
@@ -62,10 +62,14 @@ app.post('/api/expenses', async (req, res) => {
     });
   }
 
+  // Validate category (optional, defaults to 'Other')
+  const validCategories = ['Food', 'Transport', 'Entertainment', 'Shopping', 'Bills', 'Other'];
+  const expenseCategory = category && validCategories.includes(category) ? category : 'Other';
+
   try {
     const result = await pool.query(
-      'INSERT INTO expenses (item_name, amount) VALUES ($1, $2) RETURNING *',
-      [itemName.trim(), numAmount]
+      'INSERT INTO expenses (item_name, amount, category) VALUES ($1, $2, $3) RETURNING *',
+      [itemName.trim(), numAmount, expenseCategory]
     );
 
     res.status(201).json({
@@ -80,12 +84,22 @@ app.post('/api/expenses', async (req, res) => {
   }
 });
 
-// GET /api/expenses - Get all expenses
+// GET /api/expenses - Get all expenses (with optional category filter)
 app.get('/api/expenses', async (req, res) => {
+  const { category } = req.query;
+
   try {
-    const result = await pool.query(
-      'SELECT * FROM expenses ORDER BY created_at DESC'
-    );
+    let query = 'SELECT * FROM expenses';
+    const params = [];
+
+    if (category) {
+      query += ' WHERE category = $1';
+      params.push(category);
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    const result = await pool.query(query, params);
 
     res.status(200).json({
       expenses: result.rows
@@ -98,12 +112,20 @@ app.get('/api/expenses', async (req, res) => {
   }
 });
 
-// GET /api/expenses/total - Get total spending
+// GET /api/expenses/total - Get total spending (with optional category filter)
 app.get('/api/expenses/total', async (req, res) => {
+  const { category } = req.query;
+
   try {
-    const result = await pool.query(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM expenses'
-    );
+    let query = 'SELECT COALESCE(SUM(amount), 0) as total FROM expenses';
+    const params = [];
+
+    if (category) {
+      query += ' WHERE category = $1';
+      params.push(category);
+    }
+
+    const result = await pool.query(query, params);
 
     const total = parseFloat(result.rows[0].total);
 

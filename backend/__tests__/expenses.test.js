@@ -615,3 +615,341 @@ describe('User Story 4: Delete Expense - DELETE /api/expenses/:id', () => {
     });
   });
 });
+
+describe('User Story 5: Filter by Category', () => {
+  let app;
+
+  beforeEach(() => {
+    // Setup Express app for testing
+    app = express();
+    app.use(cors());
+    app.use(express.json());
+
+    // Define POST endpoint with category support
+    app.post('/api/expenses', async (req, res) => {
+      const { itemName, amount, category } = req.body;
+
+      if (!itemName || itemName.trim() === '') {
+        return res.status(400).json({ 
+          error: 'Item name is required and cannot be empty' 
+        });
+      }
+
+      if (amount === undefined || amount === null) {
+        return res.status(400).json({ 
+          error: 'Amount is required' 
+        });
+      }
+
+      const numAmount = parseFloat(amount);
+      
+      if (isNaN(numAmount) || numAmount < 0) {
+        return res.status(400).json({ 
+          error: 'Amount must be a positive number' 
+        });
+      }
+
+      const validCategories = ['Food', 'Transport', 'Entertainment', 'Shopping', 'Bills', 'Other'];
+      const expenseCategory = category && validCategories.includes(category) ? category : 'Other';
+
+      try {
+        const result = await mockPool.query(
+          'INSERT INTO expenses (item_name, amount, category) VALUES ($1, $2, $3) RETURNING *',
+          [itemName.trim(), numAmount, expenseCategory]
+        );
+
+        res.status(201).json({
+          message: 'Expense added successfully',
+          expense: result.rows[0]
+        });
+      } catch (error) {
+        res.status(500).json({ 
+          error: 'Failed to add expense to database' 
+        });
+      }
+    });
+
+    // Define GET endpoint with category filter
+    app.get('/api/expenses', async (req, res) => {
+      const { category } = req.query;
+
+      try {
+        let query = 'SELECT * FROM expenses';
+        const params = [];
+
+        if (category) {
+          query += ' WHERE category = $1';
+          params.push(category);
+        }
+
+        query += ' ORDER BY created_at DESC';
+
+        const result = await mockPool.query(query, params);
+
+        res.status(200).json({
+          expenses: result.rows
+        });
+      } catch (error) {
+        res.status(500).json({ 
+          error: 'Failed to fetch expenses from database' 
+        });
+      }
+    });
+
+    // Define GET total endpoint with category filter
+    app.get('/api/expenses/total', async (req, res) => {
+      const { category } = req.query;
+
+      try {
+        let query = 'SELECT COALESCE(SUM(amount), 0) as total FROM expenses';
+        const params = [];
+
+        if (category) {
+          query += ' WHERE category = $1';
+          params.push(category);
+        }
+
+        const result = await mockPool.query(query, params);
+
+        const total = parseFloat(result.rows[0].total);
+
+        res.status(200).json({
+          total: total
+        });
+      } catch (error) {
+        res.status(500).json({ 
+          error: 'Failed to calculate total spending' 
+        });
+      }
+    });
+
+    jest.clearAllMocks();
+  });
+
+  describe('AC #1: Add expense with category dropdown', () => {
+    test('should create expense with valid category', async () => {
+      // Arrange
+      mockPool.query.mockResolvedValue({
+        rows: [{
+          id: 1,
+          item_name: 'Lunch',
+          amount: '25.50',
+          category: 'Food',
+          created_at: new Date('2026-02-05T10:30:00.000Z')
+        }]
+      });
+
+      // Act
+      const response = await request(app)
+        .post('/api/expenses')
+        .send({
+          itemName: 'Lunch',
+          amount: 25.50,
+          category: 'Food'
+        });
+
+      // Assert
+      expect(response.status).toBe(201);
+      expect(response.body.expense.category).toBe('Food');
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'INSERT INTO expenses (item_name, amount, category) VALUES ($1, $2, $3) RETURNING *',
+        ['Lunch', 25.50, 'Food']
+      );
+    });
+
+    test('should default to "Other" category if not provided', async () => {
+      mockPool.query.mockResolvedValue({
+        rows: [{
+          id: 2,
+          item_name: 'Random item',
+          amount: '10.00',
+          category: 'Other',
+          created_at: new Date()
+        }]
+      });
+
+      const response = await request(app)
+        .post('/api/expenses')
+        .send({
+          itemName: 'Random item',
+          amount: 10.00
+        });
+
+      expect(response.status).toBe(201);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'INSERT INTO expenses (item_name, amount, category) VALUES ($1, $2, $3) RETURNING *',
+        ['Random item', 10.00, 'Other']
+      );
+    });
+
+    test('should default to "Other" for invalid category', async () => {
+      mockPool.query.mockResolvedValue({
+        rows: [{
+          id: 3,
+          item_name: 'Test item',
+          amount: '15.00',
+          category: 'Other',
+          created_at: new Date()
+        }]
+      });
+
+      const response = await request(app)
+        .post('/api/expenses')
+        .send({
+          itemName: 'Test item',
+          amount: 15.00,
+          category: 'InvalidCategory'
+        });
+
+      expect(response.status).toBe(201);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'INSERT INTO expenses (item_name, amount, category) VALUES ($1, $2, $3) RETURNING *',
+        ['Test item', 15.00, 'Other']
+      );
+    });
+  });
+
+  describe('AC #2: Filter expenses by category', () => {
+    test('should return only Food expenses when filtering by Food', async () => {
+      // Arrange
+      mockPool.query.mockResolvedValue({
+        rows: [
+          { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date() },
+          { id: 2, item_name: 'Dinner', amount: '30.00', category: 'Food', created_at: new Date() }
+        ]
+      });
+
+      // Act
+      const response = await request(app)
+        .get('/api/expenses?category=Food');
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(response.body.expenses).toHaveLength(2);
+      expect(response.body.expenses[0].category).toBe('Food');
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT * FROM expenses WHERE category = $1 ORDER BY created_at DESC',
+        ['Food']
+      );
+    });
+
+    test('should return all expenses when no category filter is applied', async () => {
+      // Arrange
+      mockPool.query.mockResolvedValue({
+        rows: [
+          { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date() },
+          { id: 2, item_name: 'Bus fare', amount: '5.00', category: 'Transport', created_at: new Date() },
+          { id: 3, item_name: 'Movie', amount: '15.00', category: 'Entertainment', created_at: new Date() }
+        ]
+      });
+
+      // Act
+      const response = await request(app)
+        .get('/api/expenses');
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(response.body.expenses).toHaveLength(3);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT * FROM expenses ORDER BY created_at DESC',
+        []
+      );
+    });
+
+    test('should return empty array when category has no expenses', async () => {
+      // Arrange
+      mockPool.query.mockResolvedValue({
+        rows: []
+      });
+
+      // Act
+      const response = await request(app)
+        .get('/api/expenses?category=Shopping');
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(response.body.expenses).toHaveLength(0);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT * FROM expenses WHERE category = $1 ORDER BY created_at DESC',
+        ['Shopping']
+      );
+    });
+  });
+
+  describe('AC #3: Total updates to show filtered sum', () => {
+    test('should return total for specific category', async () => {
+      // Arrange
+      mockPool.query.mockResolvedValue({
+        rows: [{ total: '55.50' }]
+      });
+
+      // Act
+      const response = await request(app)
+        .get('/api/expenses/total?category=Food');
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(response.body.total).toBe(55.50);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE category = $1',
+        ['Food']
+      );
+    });
+
+    test('should return 0 when filtered category has no expenses', async () => {
+      // Arrange
+      mockPool.query.mockResolvedValue({
+        rows: [{ total: '0' }]
+      });
+
+      // Act
+      const response = await request(app)
+        .get('/api/expenses/total?category=Bills');
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(response.body.total).toBe(0);
+    });
+
+    test('should return total of all expenses when no filter applied', async () => {
+      // Arrange
+      mockPool.query.mockResolvedValue({
+        rows: [{ total: '125.75' }]
+      });
+
+      // Act
+      const response = await request(app)
+        .get('/api/expenses/total');
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(response.body.total).toBe(125.75);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT COALESCE(SUM(amount), 0) as total FROM expenses',
+        []
+      );
+    });
+  });
+
+  describe('Error handling', () => {
+    test('should handle database error when fetching filtered expenses', async () => {
+      mockPool.query.mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app)
+        .get('/api/expenses?category=Food');
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('Failed to fetch expenses from database');
+    });
+
+    test('should handle database error when calculating filtered total', async () => {
+      mockPool.query.mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app)
+        .get('/api/expenses/total?category=Food');
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('Failed to calculate total spending');
+    });
+  });
+});

@@ -4,22 +4,30 @@ import './App.css'
 function App() {
   const [itemName, setItemName] = useState('')
   const [amount, setAmount] = useState('')
+  const [category, setCategory] = useState('Other')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const [expenses, setExpenses] = useState([])
   const [fetchError, setFetchError] = useState('')
   const [totalSpending, setTotalSpending] = useState(0)
+  const [filterCategory, setFilterCategory] = useState('All')
 
-  // Fetch expenses on component mount
+  const categories = ['Food', 'Transport', 'Entertainment', 'Shopping', 'Bills', 'Other']
+
+  // Fetch expenses on component mount and when filter changes
   useEffect(() => {
     fetchExpenses()
     fetchTotal()
-  }, [])
+  }, [filterCategory])
 
   const fetchExpenses = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/expenses')
+      const url = filterCategory === 'All' 
+        ? 'http://localhost:5000/api/expenses'
+        : `http://localhost:5000/api/expenses?category=${filterCategory}`
+      
+      const response = await fetch(url)
       const data = await response.json()
 
       if (!response.ok) {
@@ -35,7 +43,11 @@ function App() {
 
   const fetchTotal = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/expenses/total')
+      const url = filterCategory === 'All'
+        ? 'http://localhost:5000/api/expenses/total'
+        : `http://localhost:5000/api/expenses/total?category=${filterCategory}`
+      
+      const response = await fetch(url)
       const data = await response.json()
 
       if (!response.ok) {
@@ -76,6 +88,7 @@ function App() {
         body: JSON.stringify({
           itemName: itemName.trim(),
           amount: numAmount,
+          category: category,
         }),
       })
 
@@ -88,6 +101,7 @@ function App() {
       setSuccess('✓ Expense added successfully!')
       setItemName('')
       setAmount('')
+      setCategory('Other')
       
       // Refresh expense list and total
       fetchExpenses()
@@ -184,6 +198,23 @@ function App() {
               />
             </div>
 
+            <div className="form-group">
+              <label htmlFor="category">Category</label>
+              <select
+                id="category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                disabled={loading}
+                className="category-select"
+              >
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {error && <div className="error-message">{error}</div>}
             {success && <div className="success-message">{success}</div>}
 
@@ -198,7 +229,25 @@ function App() {
         </div>
 
         <div className="expense-list-container">
-          <h2>Expense History</h2>
+          <div className="list-header">
+            <h2>Expense History</h2>
+            <div className="filter-group">
+              <label htmlFor="filter">Filter by:</label>
+              <select
+                id="filter"
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="filter-select"
+              >
+                <option value="All">All Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           
           {fetchError && (
             <div className="error-message">{fetchError}</div>
@@ -221,7 +270,10 @@ function App() {
                 {expenses.map((expense) => (
                   <div key={expense.id} className="expense-item">
                     <div className="expense-info">
-                      <span className="expense-name">{expense.item_name}</span>
+                      <div className="expense-main">
+                        <span className="expense-name">{expense.item_name}</span>
+                        <span className="expense-category">{expense.category}</span>
+                      </div>
                       <span className="expense-date">{formatDate(expense.created_at)}</span>
                     </div>
                     <div className="expense-actions">

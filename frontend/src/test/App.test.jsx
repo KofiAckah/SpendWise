@@ -110,6 +110,7 @@ describe('User Story 1: Log Expense - Frontend UI', () => {
           body: JSON.stringify({
             itemName: 'Lunch',
             amount: 25.50,
+            category: 'Other',
           })
         })
       );
@@ -1148,5 +1149,1377 @@ describe('User Story 4: Delete Expense - Frontend UI', () => {
 
   afterEach(() => {
     window.confirm.mockRestore();
+  });
+});
+
+describe('User Story 5: Filter by Category - Frontend UI', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fetch.mockClear();
+  });
+
+  describe('AC #1: Category dropdown in Log Expense form', () => {
+    test('should render category dropdown in form', async () => {
+      // Mock initial fetch
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/category/i)).toBeInTheDocument();
+      });
+    });
+
+    test('should have all category options available', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        const categorySelect = screen.getByLabelText(/category/i);
+        expect(categorySelect).toBeInTheDocument();
+      });
+
+      const categorySelect = screen.getByLabelText(/category/i);
+      const options = Array.from(categorySelect.options).map(opt => opt.value);
+      
+      expect(options).toContain('Food');
+      expect(options).toContain('Transport');
+      expect(options).toContain('Entertainment');
+      expect(options).toContain('Shopping');
+      expect(options).toContain('Bills');
+      expect(options).toContain('Other');
+    });
+
+    test('should default to "Other" category', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        const categorySelect = screen.getByLabelText(/category/i);
+        expect(categorySelect).toHaveValue('Other');
+      });
+    });
+
+    test('should send category when adding expense', async () => {
+      const user = userEvent.setup();
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/item name/i)).toBeInTheDocument();
+      });
+
+      // Fill form with category
+      await user.type(screen.getByLabelText(/item name/i), 'Lunch');
+      await user.type(screen.getByLabelText(/amount/i), '25.50');
+      await user.selectOptions(screen.getByLabelText(/category/i), 'Food');
+
+      // Mock POST response
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: 'Expense added successfully',
+          expense: { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food' }
+        })
+      });
+
+      // Mock refresh calls
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [{ id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      await user.click(screen.getByRole('button', { name: /add expense/i }));
+
+      // Verify POST request included category
+      await waitFor(() => {
+        expect(fetch).toHaveBeenCalledWith(
+          'http://localhost:5000/api/expenses',
+          expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify({
+              itemName: 'Lunch',
+              amount: 25.50,
+              category: 'Food'
+            })
+          })
+        );
+      });
+    });
+
+    test('should reset category to "Other" after submission', async () => {
+      const user = userEvent.setup();
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/category/i)).toBeInTheDocument();
+      });
+
+      // Change category and submit
+      await user.selectOptions(screen.getByLabelText(/category/i), 'Food');
+      await user.type(screen.getByLabelText(/item name/i), 'Lunch');
+      await user.type(screen.getByLabelText(/amount/i), '25.50');
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ message: 'Success', expense: {} })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      await user.click(screen.getByRole('button', { name: /add expense/i }));
+
+      // Verify category reset to "Other"
+      await waitFor(() => {
+        expect(screen.getByLabelText(/category/i)).toHaveValue('Other');
+      });
+    });
+  });
+
+  describe('AC #2: Filter control above expense list', () => {
+    test('should render filter dropdown above list', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/filter by/i)).toBeInTheDocument();
+      });
+    });
+
+    test('should have "All Categories" as default filter option', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        const filterSelect = screen.getByLabelText(/filter by/i);
+        expect(filterSelect).toHaveValue('All');
+      });
+    });
+
+    test('should fetch filtered expenses when filter changes', async () => {
+      const user = userEvent.setup();
+
+      // Initial fetch - all expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus', amount: '5.00', category: 'Transport', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+        expect(screen.getByText('Bus')).toBeInTheDocument();
+      });
+
+      // Change filter to Food
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      await user.selectOptions(screen.getByLabelText(/filter by/i), 'Food');
+
+      // Verify filtered fetch was called
+      await waitFor(() => {
+        expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/expenses?category=Food');
+      });
+    });
+
+    test('should display only filtered expenses', async () => {
+      const user = userEvent.setup();
+
+      // Initial fetch - all expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus', amount: '5.00', category: 'Transport', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+        expect(screen.getByText('Bus')).toBeInTheDocument();
+      });
+
+      // Filter by Food
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      await user.selectOptions(screen.getByLabelText(/filter by/i), 'Food');
+
+      // Verify only Food expenses are shown
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+        expect(screen.queryByText('Bus')).not.toBeInTheDocument();
+      });
+    });
+
+    test('should display category badge on each expense', async () => {
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        const categoryBadge = screen.getByText('Lunch').parentElement.querySelector('.expense-category');
+        expect(categoryBadge).toHaveTextContent('Food');
+      });
+    });
+  });
+
+  describe('AC #3: Total updates to show filtered sum', () => {
+    test('should fetch filtered total when filter changes', async () => {
+      const user = userEvent.setup();
+
+      // Initial fetch
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus', amount: '5.00', category: 'Transport', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/GHS 30.50/)).toBeInTheDocument();
+      });
+
+      // Filter by Food
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      await user.selectOptions(screen.getByLabelText(/filter by/i), 'Food');
+
+      // Verify filtered total fetch was called
+      await waitFor(() => {
+        expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/expenses/total?category=Food');
+      });
+    });
+
+    test('should display filtered total correctly', async () => {
+      const user = userEvent.setup();
+
+      // Initial fetch
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus', amount: '5.00', category: 'Transport', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/GHS 30.50/)).toBeInTheDocument();
+      });
+
+      // Filter by Transport
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 2, item_name: 'Bus', amount: '5.00', category: 'Transport', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 5.00 })
+      });
+
+      await user.selectOptions(screen.getByLabelText(/filter by/i), 'Transport');
+
+      // Verify total updated to filtered sum
+      await waitFor(() => {
+        const totalElements = screen.getAllByText(/GHS 5\.00/);
+        expect(totalElements.length).toBeGreaterThan(0);
+      });
+    });
+
+    test('should show 0 total when filtered category has no expenses', async () => {
+      const user = userEvent.setup();
+
+      // Initial fetch
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      // Filter by Bills (no expenses)
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      await user.selectOptions(screen.getByLabelText(/filter by/i), 'Bills');
+
+      // Verify empty state and no total
+      await waitFor(() => {
+        expect(screen.getByText(/no expenses yet/i)).toBeInTheDocument();
+        expect(screen.queryByText(/total spending/i)).not.toBeInTheDocument();
+      });
+    });
+
+    test('should return to full total when filter reset to All', async () => {
+      const user = userEvent.setup();
+
+      // Initial fetch with filter
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      // Filter by Food first
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      await user.selectOptions(screen.getByLabelText(/filter by/i), 'Food');
+
+      // Reset to All
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus', amount: '5.00', category: 'Transport', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
+      });
+
+      await user.selectOptions(screen.getByLabelText(/filter by/i), 'All');
+
+      // Verify full total returned
+      await waitFor(() => {
+        expect(screen.getByText(/GHS 30.50/)).toBeInTheDocument();
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+        expect(screen.getByText('Bus')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Integration: Filter persists across operations', () => {
+    test('should maintain filter after deleting expense', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(window, 'confirm').mockImplementation(() => true);
+
+      // Initial fetch with Food filter
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Dinner', amount: '30.00', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 55.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      // Apply Food filter
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Dinner', amount: '30.00', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 55.50 })
+      });
+
+      await user.selectOptions(screen.getByLabelText(/filter by/i), 'Food');
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      // Delete one expense
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ message: 'Deleted', id: 1 })
+      });
+
+      // Refresh should still use Food filter
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 2, item_name: 'Dinner', amount: '30.00', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.00 })
+      });
+
+      const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
+      await user.click(deleteButtons[0]);
+
+      // Verify filter maintained
+      await waitFor(() => {
+        expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/expenses?category=Food');
+        expect(screen.getByLabelText(/filter by/i)).toHaveValue('Food');
+      });
+
+      window.confirm.mockRestore();
+    });
+
+    test('should maintain filter after adding new expense', async () => {
+      const user = userEvent.setup();
+
+      // Initial with Food filter
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+      
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/filter by/i)).toBeInTheDocument();
+      });
+
+      // Apply Food filter
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      await user.selectOptions(screen.getByLabelText(/filter by/i), 'Food');
+
+      // Add new expense
+      await user.type(screen.getByLabelText(/item name/i), 'Dinner');
+      await user.type(screen.getByLabelText(/amount/i), '30.00');
+      await user.selectOptions(screen.getAllByLabelText(/category/i)[0], 'Food');
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ message: 'Success', expense: {} })
+      });
+
+      // Refresh should still use Food filter
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 2, item_name: 'Dinner', amount: '30.00', category: 'Food', created_at: new Date().toISOString() },
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 55.50 })
+      });
+
+      await user.click(screen.getByRole('button', { name: /add expense/i }));
+
+      // Verify filter maintained
+      await waitFor(() => {
+        expect(screen.getByLabelText(/filter by/i)).toHaveValue('Food');
+      });
+    });
+  });
+});
+
+describe('User Story 5: Filter by Category - Frontend UI', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fetch.mockClear();
+  });
+
+  describe('AC #1: Dropdown in "Log Expense" to select category', () => {
+    test('should render category dropdown in the form', async () => {
+      // Mock empty expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        const categorySelect = screen.getByLabelText(/category/i);
+        expect(categorySelect).toBeInTheDocument();
+      });
+    });
+
+    test('should have all category options in dropdown', async () => {
+      // Mock empty expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        const categorySelect = screen.getByLabelText(/category/i);
+        expect(categorySelect).toBeInTheDocument();
+      });
+
+      const categorySelect = screen.getByLabelText(/category/i);
+      const options = Array.from(categorySelect.options).map(opt => opt.value);
+
+      expect(options).toContain('Food');
+      expect(options).toContain('Transport');
+      expect(options).toContain('Entertainment');
+      expect(options).toContain('Shopping');
+      expect(options).toContain('Bills');
+      expect(options).toContain('Other');
+    });
+
+    test('should default to "Other" category', async () => {
+      // Mock empty expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        const categorySelect = screen.getByLabelText(/category/i);
+        expect(categorySelect).toHaveValue('Other');
+      });
+    });
+
+    test('should send category with POST request when adding expense', async () => {
+      const user = userEvent.setup();
+
+      // Mock initial fetch
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/category/i)).toBeInTheDocument();
+      });
+
+      // Mock POST success
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: 'Expense added successfully',
+          expense: { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food' }
+        })
+      });
+
+      // Mock refresh calls
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [{ id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      // Select category and add expense
+      const categorySelect = screen.getByLabelText(/category/i);
+      await user.selectOptions(categorySelect, 'Food');
+      
+      await user.type(screen.getByLabelText(/item name/i), 'Lunch');
+      await user.type(screen.getByLabelText(/amount/i), '25.50');
+      await user.click(screen.getByRole('button', { name: /add expense/i }));
+
+      // Verify POST request includes category
+      await waitFor(() => {
+        expect(fetch).toHaveBeenCalledWith(
+          'http://localhost:5000/api/expenses',
+          expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify({
+              itemName: 'Lunch',
+              amount: 25.50,
+              category: 'Food'
+            })
+          })
+        );
+      });
+    });
+
+    test('should reset category to "Other" after successful submission', async () => {
+      const user = userEvent.setup();
+
+      // Mock initial fetch
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/category/i)).toBeInTheDocument();
+      });
+
+      // Mock POST success and refresh
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ message: 'Expense added successfully', expense: {} })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      // Change category and submit
+      const categorySelect = screen.getByLabelText(/category/i);
+      await user.selectOptions(categorySelect, 'Food');
+      
+      await user.type(screen.getByLabelText(/item name/i), 'Lunch');
+      await user.type(screen.getByLabelText(/amount/i), '25.50');
+      await user.click(screen.getByRole('button', { name: /add expense/i }));
+
+      // Verify category resets to Other
+      await waitFor(() => {
+        expect(categorySelect).toHaveValue('Other');
+      });
+    });
+  });
+
+  describe('AC #2: Filter control above the list to toggle views', () => {
+    test('should render filter dropdown above expense list', async () => {
+      // Mock expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      const filterSelect = screen.getByLabelText(/filter by/i);
+      expect(filterSelect).toBeInTheDocument();
+    });
+
+    test('should have "All Categories" as first filter option', async () => {
+      // Mock expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        const filterSelect = screen.getByLabelText(/filter by/i);
+        expect(filterSelect).toHaveValue('All');
+      });
+
+      const filterSelect = screen.getByLabelText(/filter by/i);
+      const firstOption = filterSelect.options[0];
+      expect(firstOption.value).toBe('All');
+      expect(firstOption.text).toBe('All Categories');
+    });
+
+    test('should fetch filtered expenses when category filter changes', async () => {
+      const user = userEvent.setup();
+
+      // Mock initial fetch - all expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus fare', amount: '5.00', category: 'Transport', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+        expect(screen.getByText('Bus fare')).toBeInTheDocument();
+      });
+
+      // Mock filtered fetch - only Food
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      // Change filter
+      const filterSelect = screen.getByLabelText(/filter by/i);
+      await user.selectOptions(filterSelect, 'Food');
+
+      // Verify filtered fetch was called
+      await waitFor(() => {
+        expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/expenses?category=Food');
+        expect(fetch).toHaveBeenCalledWith('http://localhost:5000/api/expenses/total?category=Food');
+      });
+    });
+
+    test('should display only filtered expenses', async () => {
+      const user = userEvent.setup();
+
+      // Mock initial fetch - all expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus fare', amount: '5.00', category: 'Transport', created_at: new Date().toISOString() },
+            { id: 3, item_name: 'Movie ticket', amount: '15.00', category: 'Entertainment', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 45.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+        expect(screen.getByText('Bus fare')).toBeInTheDocument();
+        expect(screen.getByText('Movie ticket')).toBeInTheDocument();
+      });
+
+      // Mock filtered fetch - only Food
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      // Change filter to Food
+      const filterSelect = screen.getByLabelText(/filter by/i);
+      await user.selectOptions(filterSelect, 'Food');
+
+      // Verify only Food expenses are shown
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+        expect(screen.queryByText('Bus fare')).not.toBeInTheDocument();
+        expect(screen.queryByText('Movie ticket')).not.toBeInTheDocument();
+      });
+    });
+
+    test('should display category badge for each expense', async () => {
+      // Mock expenses with categories
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus fare', amount: '5.00', category: 'Transport', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        // Use class selector to find category badges specifically
+        const categoryBadges = document.querySelectorAll('.expense-category');
+        expect(categoryBadges).toHaveLength(2);
+        expect(categoryBadges[0]).toHaveTextContent('Food');
+        expect(categoryBadges[1]).toHaveTextContent('Transport');
+      });
+    });
+  });
+
+  describe('AC #3: Total updates to show only filtered sum', () => {
+    test('should display total for filtered category only', async () => {
+      const user = userEvent.setup();
+
+      // Mock initial fetch - all expenses, total = 45.50
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus fare', amount: '5.00', category: 'Transport', created_at: new Date().toISOString() },
+            { id: 3, item_name: 'Dinner', amount: '15.00', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 45.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        const totalSection = screen.getByText(/total spending/i).parentElement;
+        expect(totalSection).toHaveTextContent('GHS 45.50');
+      });
+
+      // Mock filtered fetch - only Food, total = 40.50
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 3, item_name: 'Dinner', amount: '15.00', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 40.50 })
+      });
+
+      // Change filter to Food
+      const filterSelect = screen.getByLabelText(/filter by/i);
+      await user.selectOptions(filterSelect, 'Food');
+
+      // Verify total updates to filtered sum
+      await waitFor(() => {
+        const totalSection = screen.getByText(/total spending/i).parentElement;
+        expect(totalSection).toHaveTextContent('GHS 40.50');
+      });
+    });
+
+    test('should show 0 total when filtered category has no expenses', async () => {
+      const user = userEvent.setup();
+
+      // Mock initial fetch - only Food expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      // Mock filtered fetch - Bills category (no expenses)
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      // Change filter to Bills
+      const filterSelect = screen.getByLabelText(/filter by/i);
+      await user.selectOptions(filterSelect, 'Bills');
+
+      // Verify empty state and no total displayed
+      await waitFor(() => {
+        expect(screen.getByText(/no expenses yet/i)).toBeInTheDocument();
+        expect(screen.queryByText(/total spending/i)).not.toBeInTheDocument();
+      });
+    });
+
+    test('should return to full total when filter is set back to "All"', async () => {
+      const user = userEvent.setup();
+
+      // Mock initial fetch - all expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus fare', amount: '5.00', category: 'Transport', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      // Mock filtered fetch - Food only
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      // Filter by Food
+      const filterSelect = screen.getByLabelText(/filter by/i);
+      await user.selectOptions(filterSelect, 'Food');
+
+      await waitFor(() => {
+        const totalSection = screen.getByText(/total spending/i).parentElement;
+        expect(totalSection).toHaveTextContent('GHS 25.50');
+      });
+
+      // Mock unfiltered fetch - back to all
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus fare', amount: '5.00', category: 'Transport', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
+      });
+
+      // Change filter back to All
+      await user.selectOptions(filterSelect, 'All');
+
+      // Verify full total is restored
+      await waitFor(() => {
+        const totalSection = screen.getByText(/total spending/i).parentElement;
+        expect(totalSection).toHaveTextContent('GHS 30.50');
+      });
+    });
+  });
+
+  describe('Integration: Category with add and delete operations', () => {
+    test('should maintain filter selection after adding expense', async () => {
+      const user = userEvent.setup();
+
+      // Mock initial fetch - Food category filter
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      // Mock filter change to Food
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      const filterSelect = screen.getByLabelText(/filter by/i);
+      await user.selectOptions(filterSelect, 'Food');
+
+      await waitFor(() => {
+        expect(filterSelect).toHaveValue('Food');
+      });
+
+      // Mock POST new Food expense
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: 'Expense added successfully',
+          expense: { id: 2, item_name: 'Dinner', amount: '30.00', category: 'Food' }
+        })
+      });
+
+      // Mock refresh with filter still applied
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 2, item_name: 'Dinner', amount: '30.00', category: 'Food', created_at: new Date().toISOString() },
+            { id: 1, item_name: 'Lunch', amount: '25.50', category: 'Food', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 55.50 })
+      });
+
+      // Add new expense
+      const categoryFormSelect = screen.getAllByDisplayValue('Other')[0]; // Form category select
+      await user.selectOptions(categoryFormSelect, 'Food');
+      await user.type(screen.getByLabelText(/item name/i), 'Dinner');
+      await user.type(screen.getByLabelText(/amount/i), '30.00');
+      await user.click(screen.getByRole('button', { name: /add expense/i }));
+
+      // Verify filter is still applied and shows filtered results
+      await waitFor(() => {
+        expect(filterSelect).toHaveValue('Food');
+        expect(screen.getByText('Dinner')).toBeInTheDocument();
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+    });
   });
 });
