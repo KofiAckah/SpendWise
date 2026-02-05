@@ -779,3 +779,374 @@ describe('User Story 2: View Expense List - Frontend UI', () => {
     });
   });
 });
+
+describe('User Story 4: Delete Expense - Frontend UI', () => {
+  beforeEach(() => {
+    // Clear all mocks before each test
+    vi.clearAllMocks();
+    fetch.mockClear();
+
+    // Mock window.confirm
+    vi.spyOn(window, 'confirm').mockImplementation(() => true);
+  });
+
+  describe('Acceptance Criteria #1: Visible Delete button for each list item', () => {
+    test('should render delete button for each expense', async () => {
+      // Mock GET /api/expenses with expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus fare', amount: '5.00', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      // Mock GET /api/expenses/total
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
+      });
+
+      render(<App />);
+
+      // Wait for expenses to load
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      // Check delete buttons exist
+      const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
+      expect(deleteButtons).toHaveLength(2);
+      expect(deleteButtons[0]).toHaveTextContent('🗑️');
+    });
+
+    test('should have accessible label for delete button', async () => {
+      // Mock GET /api/expenses with one expense
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      // Mock GET /api/expenses/total
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      const deleteButton = screen.getByRole('button', { name: /delete lunch/i });
+      expect(deleteButton).toBeInTheDocument();
+    });
+  });
+
+  describe('Acceptance Criteria #2: Clicking removes record from database', () => {
+    test('should show confirmation dialog before deleting', async () => {
+      const user = userEvent.setup();
+
+      // Mock GET /api/expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      // Mock GET /api/expenses/total
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      const deleteButton = screen.getByRole('button', { name: /delete lunch/i });
+      await user.click(deleteButton);
+
+      expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this expense?');
+    });
+
+    test('should send DELETE request when delete button is clicked and confirmed', async () => {
+      const user = userEvent.setup();
+
+      // Mock GET /api/expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      // Mock GET /api/expenses/total
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      // Mock DELETE /api/expenses/1
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: 'Expense deleted successfully',
+          id: 1
+        })
+      });
+
+      // Mock refreshed GET /api/expenses (empty list)
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      // Mock refreshed GET /api/expenses/total
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      const deleteButton = screen.getByRole('button', { name: /delete lunch/i });
+      await user.click(deleteButton);
+
+      // Verify DELETE request was sent
+      await waitFor(() => {
+        expect(fetch).toHaveBeenCalledWith(
+          'http://localhost:5000/api/expenses/1',
+          { method: 'DELETE' }
+        );
+      });
+    });
+
+    test('should not delete if user cancels confirmation', async () => {
+      const user = userEvent.setup();
+      
+      // Mock user canceling
+      window.confirm.mockReturnValueOnce(false);
+
+      // Mock GET /api/expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      // Mock GET /api/expenses/total
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      const deleteButton = screen.getByRole('button', { name: /delete lunch/i });
+      const initialFetchCount = fetch.mock.calls.length;
+      
+      await user.click(deleteButton);
+
+      // Verify no additional fetch calls were made
+      expect(fetch).toHaveBeenCalledTimes(initialFetchCount);
+    });
+  });
+
+  describe('Acceptance Criteria #3: Total spending updates immediately', () => {
+    test('should refresh both expense list and total after deletion', async () => {
+      const user = userEvent.setup();
+
+      // Mock initial GET /api/expenses with two expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', created_at: new Date().toISOString() },
+            { id: 2, item_name: 'Bus fare', amount: '5.00', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      // Mock initial GET /api/expenses/total
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 30.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+        expect(screen.getByText(/GHS 30.50/)).toBeInTheDocument();
+      });
+
+      // Mock DELETE /api/expenses/1
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: 'Expense deleted successfully',
+          id: 1
+        })
+      });
+
+      // Mock refreshed GET /api/expenses (one expense remaining)
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 2, item_name: 'Bus fare', amount: '5.00', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      // Mock refreshed GET /api/expenses/total
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 5.00 })
+      });
+
+      const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
+      await user.click(deleteButtons[0]);
+
+      // Verify list updated
+      await waitFor(() => {
+        expect(screen.queryByText('Lunch')).not.toBeInTheDocument();
+        expect(screen.getByText('Bus fare')).toBeInTheDocument();
+      });
+
+      // Verify total updated to 5.00 (remaining expense)
+      await waitFor(() => {
+        const totalElements = screen.getAllByText(/GHS 5\.00/);
+        expect(totalElements.length).toBeGreaterThan(0);
+      });
+    });
+
+    test('should show success message after deletion', async () => {
+      const user = userEvent.setup();
+
+      // Mock GET /api/expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      // Mock GET /api/expenses/total
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      // Mock DELETE success
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: 'Expense deleted successfully',
+          id: 1
+        })
+      });
+
+      // Mock refreshed data
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expenses: [] })
+      });
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 0 })
+      });
+
+      const deleteButton = screen.getByRole('button', { name: /delete lunch/i });
+      await user.click(deleteButton);
+
+      // Verify success message appears
+      await waitFor(() => {
+        expect(screen.getByText(/expense deleted successfully/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Error handling', () => {
+    test('should display error message if deletion fails', async () => {
+      const user = userEvent.setup();
+
+      // Mock GET /api/expenses
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          expenses: [
+            { id: 1, item_name: 'Lunch', amount: '25.50', created_at: new Date().toISOString() }
+          ]
+        })
+      });
+
+      // Mock GET /api/expenses/total
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 25.50 })
+      });
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Lunch')).toBeInTheDocument();
+      });
+
+      // Mock DELETE failure
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({
+          error: 'Expense not found'
+        })
+      });
+
+      const deleteButton = screen.getByRole('button', { name: /delete lunch/i });
+      await user.click(deleteButton);
+
+      // Verify error message appears
+      await waitFor(() => {
+        expect(screen.getByText(/expense not found/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  afterEach(() => {
+    window.confirm.mockRestore();
+  });
+});
