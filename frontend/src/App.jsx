@@ -9,10 +9,12 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [expenses, setExpenses] = useState([])
   const [fetchError, setFetchError] = useState('')
+  const [totalSpending, setTotalSpending] = useState(0)
 
   // Fetch expenses on component mount
   useEffect(() => {
     fetchExpenses()
+    fetchTotal()
   }, [])
 
   const fetchExpenses = async () => {
@@ -28,6 +30,21 @@ function App() {
       setFetchError('')
     } catch (err) {
       setFetchError(err.message || 'Failed to load expenses')
+    }
+  }
+
+  const fetchTotal = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/expenses/total')
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch total')
+      }
+
+      setTotalSpending(data.total)
+    } catch (err) {
+      console.error('Failed to fetch total spending:', err)
     }
   }
 
@@ -72,8 +89,9 @@ function App() {
       setItemName('')
       setAmount('')
       
-      // Refresh expense list
+      // Refresh expense list and total
       fetchExpenses()
+      fetchTotal()
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000)
@@ -164,19 +182,26 @@ function App() {
           )}
 
           {!fetchError && expenses.length > 0 && (
-            <div className="expense-list">
-              {expenses.map((expense) => (
-                <div key={expense.id} className="expense-item">
-                  <div className="expense-info">
-                    <span className="expense-name">{expense.item_name}</span>
-                    <span className="expense-date">{formatDate(expense.created_at)}</span>
+            <>
+              <div className="total-spending">
+                <span className="total-label">Total Spending</span>
+                <span className="total-amount">GHS {formatAmount(totalSpending)}</span>
+              </div>
+
+              <div className="expense-list">
+                {expenses.map((expense) => (
+                  <div key={expense.id} className="expense-item">
+                    <div className="expense-info">
+                      <span className="expense-name">{expense.item_name}</span>
+                      <span className="expense-date">{formatDate(expense.created_at)}</span>
+                    </div>
+                    <div className="expense-amount">
+                      GHS {formatAmount(expense.amount)}
+                    </div>
                   </div>
-                  <div className="expense-amount">
-                    GHS {formatAmount(expense.amount)}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </main>
