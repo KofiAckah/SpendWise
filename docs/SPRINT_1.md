@@ -110,7 +110,7 @@ As a user, I want to see the total sum of all my expenses so that I know my tota
 - React form component created
 - Client-side validation implemented
 - 10 backend tests + 14 frontend tests written
-- **Status: Complete ✓**
+- **Status: Complete **
 
 **Burndown Update:** 3 story points remaining
 
@@ -127,7 +127,7 @@ As a user, I want to see the total sum of all my expenses so that I know my tota
 - Expense list component displaying correctly
 - Empty state handling implemented
 - 5 backend tests + 9 frontend tests written
-- **Status: Complete ✓**
+- **Status: Complete **
 
 **Mid-Sprint Assessment:**
 - Progress: 5 of 6 points complete (83%)
@@ -151,7 +151,7 @@ As a user, I want to see the total sum of all my expenses so that I know my tota
 - GHS currency formatting (e.g., "GHS 125.50")
 - Auto-update on expense addition
 - 5 backend tests + 6 frontend tests written
-- **Status: Complete ✓**
+- **Status: Complete **
 
 **Burndown Update:** 0 story points remaining
 
@@ -160,9 +160,9 @@ As a user, I want to see the total sum of all my expenses so that I know my tota
 ### Sprint End
 
 **Final Status:**
-- US-001: Complete ✓
-- US-002: Complete ✓
-- US-003: Complete ✓
+- US-001: Complete 
+- US-002: Complete 
+- US-003: Complete 
 
 **Sprint Achievements:**
 - All three committed user stories completed
@@ -178,13 +178,13 @@ As a user, I want to see the total sum of all my expenses so that I know my tota
 
 ### Completed Work
 
-**US-001: Log Expense** ✓  
+**US-001: Log Expense**   
 All acceptance criteria met. Expense creation working with validation. Backend and frontend tests passing.
 
-**US-002: View Expense List** ✓  
+**US-002: View Expense List**   
 All acceptance criteria met. List displays with ordering and empty state. Auto-refresh working.
 
-**US-003: View Total Spending** ✓  
+**US-003: View Total Spending**   
 All acceptance criteria met. Total calculation accurate. GHS currency formatting applied.
 
 ### Screenshots

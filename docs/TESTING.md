@@ -1,9 +1,12 @@
-# Testing Guide for SpendWise - User Story 1
+# Testing Guide for SpendWise
 
 ## Overview
-This guide explains how to run tests for User Story 1: Log Expense feature.
+This guide explains how to run tests for all implemented user stories.
 
----
+**Test Summary:**
+- Backend: 37 tests passing (Jest + Supertest)
+- Frontend: 67 tests passing (Vitest + React Testing Library)
+- Total: 104 automated tests (100% passing)
 
 ## Backend Tests
 
@@ -26,35 +29,35 @@ npm run test:watch
 The backend tests verify all acceptance criteria for US01:
 
 **9 Test Cases:**
-1. ✅ Create expense with valid item name and amount (AC #1, #2)
-2. ✅ Save different types of expenses (AC #1, #2)
-3. ✅ Reject empty item name (AC #3)
-4. ✅ Reject whitespace-only item name (AC #3)
-5. ✅ Trim whitespace from valid names (AC #1)
-6. ✅ Reject negative amounts (AC #3)
-7. ✅ Reject non-numeric amounts (AC #3)
-8. ✅ Reject missing amount field (AC #3)
-9. ✅ Accept zero amount for free items (AC #1)
-10. ✅ Handle database errors gracefully
+1.  Create expense with valid item name and amount (AC #1, #2)
+2.  Save different types of expenses (AC #1, #2)
+3.  Reject empty item name (AC #3)
+4.  Reject whitespace-only item name (AC #3)
+5.  Trim whitespace from valid names (AC #1)
+6.  Reject negative amounts (AC #3)
+7.  Reject non-numeric amounts (AC #3)
+8.  Reject missing amount field (AC #3)
+9.  Accept zero amount for free items (AC #1)
+10.  Handle database errors gracefully
 
 **Expected Output:**
 ```
 PASS  __tests__/expenses.test.js
   User Story 1: Log Expense - POST /api/expenses
     Acceptance Criteria #1 & #2: Input fields and save to database
-      ✓ should create expense with valid item name and amount
-      ✓ should save different types of expenses
+       should create expense with valid item name and amount
+       should save different types of expenses
     Acceptance Criteria #3: Validation prevents empty names
-      ✓ should reject empty item name
-      ✓ should reject item name with only whitespace
-      ✓ should trim whitespace from valid item names
+       should reject empty item name
+       should reject item name with only whitespace
+       should trim whitespace from valid item names
     Acceptance Criteria #3: Validation prevents negative costs
-      ✓ should reject negative amount
-      ✓ should reject non-numeric amount
-      ✓ should reject missing amount field
-      ✓ should accept zero amount (free items)
+       should reject negative amount
+       should reject non-numeric amount
+       should reject missing amount field
+       should accept zero amount (free items)
     Error handling
-      ✓ should handle database errors gracefully
+       should handle database errors gracefully
 
 Test Suites: 1 passed, 1 total
 Tests:       10 passed, 10 total
@@ -86,29 +89,29 @@ npm run test:ui
 The frontend tests verify UI/UX for US01:
 
 **16 Test Cases:**
-1. ✅ Render item name input field (AC #1)
-2. ✅ Render amount input field (AC #1)
-3. ✅ Render Add Expense button (AC #1)
-4. ✅ Allow user to type in input fields (AC #1)
-5. ✅ Send POST request with valid data (AC #2)
-6. ✅ Display success message after submission (AC #2)
-7. ✅ Clear form after successful submission (AC #2)
-8. ✅ Show error for empty item name (AC #3)
-9. ✅ Show error for negative amount (AC #3)
-10. ✅ Show server error messages (AC #3)
-11. ✅ Disable button while submitting (UX)
-12. ✅ Display SpendWise header (UI)
-13. ✅ Display Log Expense heading (UI)
-14. ✅ Have proper form structure (UI)
+1.  Render item name input field (AC #1)
+2.  Render amount input field (AC #1)
+3.  Render Add Expense button (AC #1)
+4.  Allow user to type in input fields (AC #1)
+5.  Send POST request with valid data (AC #2)
+6.  Display success message after submission (AC #2)
+7.  Clear form after successful submission (AC #2)
+8.  Show error for empty item name (AC #3)
+9.  Show error for negative amount (AC #3)
+10.  Show server error messages (AC #3)
+11.  Disable button while submitting (UX)
+12.  Display SpendWise header (UI)
+13.  Display Log Expense heading (UI)
+14.  Have proper form structure (UI)
 
 **Expected Output:**
 ```
-✓ src/test/App.test.jsx (16)
-   ✓ User Story 1: Log Expense - Frontend UI (16)
-     ✓ Acceptance Criteria #1: Input fields (4)
-     ✓ Acceptance Criteria #2: Save to database (3)
-     ✓ Acceptance Criteria #3: Validation (3)
-     ✓ UI/UX Requirements (3)
+ src/test/App.test.jsx (16)
+    User Story 1: Log Expense - Frontend UI (16)
+      Acceptance Criteria #1: Input fields (4)
+      Acceptance Criteria #2: Save to database (3)
+      Acceptance Criteria #3: Validation (3)
+      UI/UX Requirements (3)
 
 Test Files  1 passed (1)
      Tests  16 passed (16)
@@ -134,15 +137,15 @@ The GitHub Actions pipeline automatically runs when you:
 1. Go to your GitHub repository
 2. Click the **Actions** tab
 3. Click on the latest workflow run
-4. See green ✅ checkmarks for each stage
+4. See green  checkmarks for each stage
 
 ### Expected Pipeline Output
 ```
-✅ Backend Tests (User Story 1) - 10/10 passed
-✅ Frontend Tests (User Story 1) - 16/16 passed
-✅ Docker Build Verification - Images built
-✅ Integration Tests - API working
-✅ All Tests Passed - Ready for Story 2!
+ Backend Tests (User Story 1) - 10/10 passed
+ Frontend Tests (User Story 1) - 16/16 passed
+ Docker Build Verification - Images built
+ Integration Tests - API working
+ All Tests Passed - Ready for Story 2!
 ```
 
 ---
@@ -223,18 +226,18 @@ npm test
 
 Before marking User Story 1 as complete:
 
-### Testing Requirements ✅
+### Testing Requirements 
 - [ ] All 10 backend tests pass
 - [ ] All 16 frontend tests pass
-- [ ] CI/CD pipeline shows green ✅
+- [ ] CI/CD pipeline shows green 
 - [ ] Integration tests pass
 
-### Code Quality ✅
+### Code Quality 
 - [ ] No console errors or warnings
 - [ ] Code follows clean code principles
 - [ ] Conventional commit messages used
 
-### Acceptance Criteria ✅
+### Acceptance Criteria 
 - [ ] AC #1: Input fields for Item Name and Amount
 - [ ] AC #2: "Add Expense" button saves to Postgres
 - [ ] AC #3: Validation prevents empty names & negative costs
@@ -244,11 +247,11 @@ Before marking User Story 1 as complete:
 ## Next Steps
 
 Once all tests pass:
-1. ✅ Mark User Story 1 as DONE
-2. ✅ Update Sprint 1 documentation
-3. ✅ Commit all changes incrementally
-4. ✅ Push to GitHub and verify green pipeline
-5. ✅ Move to User Story 2: View Expense List
+1.  Mark User Story 1 as DONE
+2.  Update Sprint 1 documentation
+3.  Commit all changes incrementally
+4.  Push to GitHub and verify green pipeline
+5.  Move to User Story 2: View Expense List
 
 ---
 
