@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import './App.css'
 
 function App() {
@@ -15,13 +15,7 @@ function App() {
 
   const categories = ['Food', 'Transport', 'Entertainment', 'Shopping', 'Bills', 'Other']
 
-  // Fetch expenses on component mount and when filter changes
-  useEffect(() => {
-    fetchExpenses()
-    fetchTotal()
-  }, [filterCategory])
-
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     try {
       const url = filterCategory === 'All' 
         ? 'http://localhost:5000/api/expenses'
@@ -39,9 +33,9 @@ function App() {
     } catch (err) {
       setFetchError(err.message || 'Failed to load expenses')
     }
-  }
+  }, [filterCategory])
 
-  const fetchTotal = async () => {
+  const fetchTotal = useCallback(async () => {
     try {
       const url = filterCategory === 'All'
         ? 'http://localhost:5000/api/expenses/total'
@@ -58,7 +52,13 @@ function App() {
     } catch (err) {
       console.error('Failed to fetch total spending:', err)
     }
-  }
+  }, [filterCategory])
+
+  // Fetch expenses on component mount and when filter changes
+  useEffect(() => {
+    fetchExpenses()
+    fetchTotal()
+  }, [filterCategory, fetchExpenses, fetchTotal])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
