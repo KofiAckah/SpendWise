@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
 import dotenv from 'dotenv';
+import morgan from 'morgan';
 
 dotenv.config();
 
@@ -12,6 +13,12 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// HTTP request logging with Morgan
+// Format: :method :url :status :response-time ms - :date[iso]
+app.use(morgan(':method :url :status :response-time ms - :date[iso]', {
+  skip: (req) => req.url === '/api/health' // Skip health check logs to reduce noise
+}));
 
 // PostgreSQL connection pool
 const pool = new Pool({
